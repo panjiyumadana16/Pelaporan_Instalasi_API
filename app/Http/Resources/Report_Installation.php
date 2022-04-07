@@ -16,6 +16,7 @@ class Report_Installation extends JsonResource
     {
         return [
             'id' => $this->id,
+            'category_instansi' => $this->category_instansi,
             'installation_id' => $this->installation_id,
             'start_installation' => $this->start_installation,
             'start_training	' => $this->start_training,

@@ -10,6 +10,7 @@ class Report_photo extends Model
     use HasFactory;
     protected $fillable = [
         'report_id',
+        'type',
         'photos',
     ];
 }

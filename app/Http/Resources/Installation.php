@@ -20,6 +20,7 @@ class Installation extends JsonResource
             'number_of_technicians' => $this->number_of_technicians,
             'category_instansi' => $this->category_instansi,
             'technician_id' => $this->technician_id,
+            'name' => $this->name,
             'date_instalation' => $this->date_instalation,
             'pic_name' => $this->pic_name,
             'pic_phone' => $this->pic_phone,

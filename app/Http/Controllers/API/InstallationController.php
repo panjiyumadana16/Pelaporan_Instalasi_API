@@ -5,44 +5,59 @@ namespace App\Http\Controllers\API;
 use App\Http\Resources\Installation as InstallationResource;
 use App\Http\Controllers\API\BaseController as BaseController;
 use App\Models\Installation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class InstallationController extends BaseController
 {
     public function index()
     {
-        $installations = Installation::all();
+        $installations = Installation::where('status', 1)->get();
         return $this->sendResponse(InstallationResource::collection($installations), 'Tampil data berhasil!');
+    }
+
+    public function countData()
+    {
+        $installations = COUNT(Installation::where('status', 1)->get());
+        return response()->json($installations);
     }
 
     public function store(Request $request)
     {
         $input = $request->all();
-        $input['code'] = strtoupper(substr(md5(time()), 0, 5));
-        $input['status'] = 1;
-        $validator = Validator::make($input, [
-            'number_of_technicians' => 'required',
-            'category_instansi' => 'required',
-            'technician_id' => 'required',
-            'date_instalation' => 'required|date',
-            'pic_name' => 'required',
-            'pic_phone' => 'required',
+        // $input['code'] = strtoupper(substr(md5(time()), 0, 5));
+        // $input['status'] = 1;
+        $installation = Installation::insert([
+            'code'                  => $request->code,
+            'number_of_technicians' => $request->number_of_technicians,
+            'category_instansi'     => $request->category_instansi,
+            'technician_id'         => $request->technician_id,
+            'date_instalation'      => $request->date_instalation,
+            'pic_name'              => $request->pic_name,
+            'pic_phone'            => $request->pic_number,
+            'status'                => '1',
+            'alamat'                => $request->alamat,
+            'created_at'            => Carbon::now(),
+            'updated_at'            => Carbon::now()
         ]);
-        if ($validator->fails()) {
-            return $this->sendError($validator->errors());
-        }
-        $installation = Installation::create($input);
-        return $this->sendResponse(new InstallationResource($installation), 'Input data Instalasi berhasil!');
+        return response()->json($installation);
     }
 
     public function show($id)
     {
-        $installation = Installation::find($id);
+        $installation = DB::select("
+            SELECT i.*, t.*, i.id as id_instalation
+            FROM installations i, technicians t
+            WHERE i.id = $id AND i.technician_id = t.id
+        ");
+        // $installation = Installation::join('technicians', 'installations.technician_id', '=', 'technicians.id')->where('installations.id', $id)->first();
         if (is_null($installation)) {
             return $this->sendError('Data instalasi tidak ditemukan!');
         }
-        return $this->sendResponse(new InstallationResource($installation), 'Data Instalasi ada!');
+        // return $this->sendResponse(new InstallationResource($installation), 'Data Instalasi ada!');
+        return response()->json($installation);
     }
 
     public function update(Request $request, $id)

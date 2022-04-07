@@ -4,12 +4,13 @@ namespace App\Http\Controllers\API;
 
 
 use App\Http\Controllers\API\BaseController as BaseController;
-use App\Http\Resources\Report_Component as RComponentResource;
 use App\Http\Resources\Report_Installation as RInstallationResource;
+use App\Models\Installation;
 use App\Models\Report_component;
 use App\Models\Report_installation;
 use App\Models\Report_photo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use phpDocumentor\Reflection\Types\Null_;
 
@@ -17,64 +18,338 @@ class Report_InstallationController extends BaseController
 {
     public function index()
     {
-        $rinstallation = Report_installation::all();
+        $rinstallation = Report_installation::join('installations', 'report_installations.installation_id', '=', 'installations.id')->get();
         return $this->sendResponse(RInstallationResource::collection($rinstallation), 'Tampil data berhasil!');
     }
 
     public function show($id)
     {
-        $rinstallation = Report_installation::find($id);
+        $rinstallation = DB::select("
+            SELECT i.*, ri.*, rc.*, c.*
+            FROM installations i, report_installations ri, report_components rc, components c
+            WHERE ri.installation_id = $id AND i.id = ri.installation_id AND rc.report_id = ri.id AND rc.component_id = c.id
+        ");
         if (is_null($rinstallation)) {
             return $this->sendError('Data tidak ditemukan!');
         }
-        return $this->sendResponse(new RInstallationResource($rinstallation), 'Tampil data berhasil!');
+        return response()->json([
+            'data' => $rinstallation
+        ]);
     }
 
-    public function store(Request $request, $id = null)
+    public function checkData($id)
     {
-        if (empty($id)) {
-            $input = $request->all();
-            $input['status'] = 1;
-            $validator = Validator::make($input, [
-                'installation_id' => 'required',
-            ]);
-            if ($validator->fails()) {
-                return $this->sendError($validator->errors());
+        $rinstallation = DB::select("
+            SELECT i.*, ri.*, rc.*, c.*, DATE_FORMAT(ri.start_installation, '%Y-%m-%d') as startI_date,
+             DATE_FORMAT(ri.start_training, '%Y-%m-%d') as startT_date, DATE_FORMAT(ri.completed_installation, '%Y-%m-%d') as completeI_date, DATE_FORMAT(ri.complete_training, '%Y-%m-%d') as completeT_date
+            FROM installations i, report_installations ri, report_components rc, components c
+            WHERE ri.installation_id = $id AND i.id = ri.installation_id AND rc.report_id = ri.id AND rc.component_id = c.id
+        ");
+
+        return response()->json($rinstallation);
+    }
+
+    public function checkFoto($id)
+    {
+        $data = Report_photo::where([['report_id', $id], ['type', 'Foto']])->get();
+
+        return response()->json($data);
+    }
+
+    public function checkFotoBast($id)
+    {
+        $data = Report_photo::where([['report_id', $id], ['type', 'Bast']])->get();
+
+        return response()->json($data);
+    }
+    
+    public function checkVideo($id)
+    {
+        $data = Report_Installation::where('installation_id', $id)->value('video');
+        return response()->json($data);
+
+    }
+
+    public function store(Request $request, $id)
+    {
+        $checkRI = Report_installation::where('installation_id', $id)->first();
+        
+        if(!is_null($checkRI)){
+            $checkCom1 = Report_component::where([['report_id', $id], ['component_id', 1]])->first();
+            $checkCom2 = Report_component::where([['report_id', $id], ['component_id', 2]])->first();
+            $checkCom3 = Report_component::where([['report_id', $id], ['component_id', 3]])->first();
+            $checkCom4 = Report_component::where([['report_id', $id], ['component_id', 4]])->first();
+            $checkCom5 = Report_component::where([['report_id', $id], ['component_id', 5]])->first();
+            
+            $updateR = Report_installation::where('installation_id', $id)->update([
+                        'start_installation'    => $request->tglMulaiInstalasi,
+                        'completed_installation' => $request->tglSelesaiInstalasi,
+                        'start_training'        => $request->tglMulaiTraining,
+                        'complete_training'     => $request->tglSelesaiTraining,
+                        'condition'             => $request->kondisi,
+                        'problem'               => $request->problem,
+                        'anydesk_id'            => $request->idAnydesk,
+                        'status'                => 1
+                    ]);
+
+            if($checkCom1){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 1]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 1
+                    ]);
+                }
             }
-            $rinstallation = Report_installation::create($input);
-            return $this->sendResponse(new RInstallationResource($rinstallation), 'Input data Instalasi berhasil!');
-        } else {
-            $input = $request->all();
-            $rinstallation = Report_installation::find($id);
+            if($checkCom2){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 2]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 2
+                    ]);
+                }
+            }
+            if($checkCom3){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 3]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 3
+                    ]);
+                }
+            }
+            if($checkCom4){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 4]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 4
+                    ]);
+                }
+            }
+            if($checkCom5){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 5]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 5
+                    ]);
+                }
+            }
 
-            $input['start_installation'] = (empty($input['start_installation'])) ? $rinstallation['start_installation'] : $input['start_installation'];
+            return response()->json($updateR);
+        }else{
+            $reportI = new Report_installation;
+            $reportI->installation_id       = $id;
+            $reportI->start_installation    = $request->tglMulaiInstalasi;
+            $reportI->completed_installation = $request->tglSelesaiInstalasi;
+            $reportI->start_training        = $request->tglMulaiTraining;
+            $reportI->complete_training     = $request->tglSelesaiTraining;
+            $reportI->condition             = $request->kondisi;
+            $reportI->problem               = $request->problem;
+            $reportI->anydesk_id            = $request->idAnydesk;
+            $reportI->status                = '1';
+            $reportI->save();
 
-            $input['completed_installation'] = (empty($input['completed_installation'])) ? $rinstallation['completed_installation'] : $input['completed_installation'];
 
-            $input['start_training'] = (empty($input['start_training'])) ? $rinstallation['start_training'] : $input['start_training'];
+            if($request->tiketing == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 1
+                ]);
+            }
+            if($request->caller == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 2
+                ]);
+            }
+            if($request->digitalSignage == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 3
+                ]);
+            }
+            if($request->hardware == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->idd,
+                    'component_id'  => 4
+                ]);
+            }
+            if($request->jaringan == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 5
+                ]);
+            }
 
-            $input['complete_training'] = (empty($input['complete_training'])) ? $rinstallation['complete_training'] : $input['complete_training'];
-
-            $input['condition'] = (empty($input['condition'])) ? $rinstallation['condition'] : $input['condition'];
-
-            $input['problem'] = (empty($input['problem'])) ? $rinstallation['problem'] : $input['problem'];
-
-            $input['status'] = (empty($input['status'])) ? $rinstallation['status'] : $input['status'];
-
-            $input['anydesk_id'] = (empty($input['anydesk_id'])) ? $rinstallation['anydesk_id'] : $input['anydesk_id'];
-
-            $rinstallation->start_installation = $input['start_installation'];
-            $rinstallation->completed_installation = $input['completed_installation'];
-            $rinstallation->start_training = $input['start_training'];
-            $rinstallation->complete_training = $input['complete_training'];
-            $rinstallation->condition = $input['condition'];
-            $rinstallation->problem = $input['problem'];
-            $rinstallation->status = $input['status'];
-            $rinstallation->anydesk_id = $input['anydesk_id'];
-            $rinstallation->save();
-
-            return $this->sendResponse(new RInstallationResource($rinstallation), 'Input data Instalasi berhasil!');
+            return response()->json([
+                'Report' => $reportI,
+                'message'   => 'Success'
+            ]);
         }
+        
+    }
+
+    public function storeSave(Request $request, $id)
+    {
+        $checkRI = Report_installation::where('installation_id', $id)->first();
+        
+        if(!is_null($checkRI)){
+            $checkCom1 = Report_component::where([['report_id', $id], ['component_id', 1]])->first();
+            $checkCom2 = Report_component::where([['report_id', $id], ['component_id', 2]])->first();
+            $checkCom3 = Report_component::where([['report_id', $id], ['component_id', 3]])->first();
+            $checkCom4 = Report_component::where([['report_id', $id], ['component_id', 4]])->first();
+            $checkCom5 = Report_component::where([['report_id', $id], ['component_id', 5]])->first();
+            
+            if($checkCom1){
+                if($request->tiketing == false){
+                    Report_component::where([['report_id', $id], ['component_id', 1]])->delete();   
+                }
+            }else{
+                if($request->tiketing == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 1
+                    ]);
+                }
+            }
+            if($checkCom2){
+                if($request->caller == false){
+                    Report_component::where([['report_id', $id], ['component_id', 2]])->delete();   
+                }
+            }else{
+                if($request->caller == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 2
+                    ]);
+                }
+            }
+            if($checkCom3){
+                if($request->digitalSignage == false){
+                    Report_component::where([['report_id', $id], ['component_id', 3]])->delete();   
+                }
+            }else{
+                if($request->digitalSignage == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 3
+                    ]);
+                }
+            }
+            if($checkCom4){
+                if($request->hardware == false){
+                    Report_component::where([['report_id', $id], ['component_id', 4]])->delete();   
+                }
+            }else{
+                if($request->hardware == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 4
+                    ]);
+                }
+            }
+            if($checkCom5){
+                if($request->jaringan == false){
+                    Report_component::where([['report_id', $id], ['component_id', 5]])->delete();   
+                }
+            }else{
+                if($request->jaringan == true){
+                    Report_component::insert([
+                        'report_id'     => $checkRI->id,
+                        'component_id'  => 5
+                    ]);
+                }
+            }
+            
+            $updateR = Report_installation::where('installation_id', $id)->update([
+                'start_installation'    => $request->tglMulaiInstalasi,
+                'completed_installation' => $request->tglSelesaiInstalasi,
+                'start_training'        => $request->tglMulaiTraining,
+                'complete_training'     => $request->tglSelesaiTraining,
+                'condition'             => $request->kondisi,
+                'problem'               => $request->problem,
+                'anydesk_id'            => $request->idAnydesk,
+                'status'                => '2'
+            ]);
+
+            Installation::where('id',$id)->update([
+                'status'    => 2
+            ]);
+            return response()->json($updateR);
+
+        }else{
+            $reportI = new Report_installation;
+            $reportI->installation_id       = $id;
+            $reportI->start_installation    = $request->tglMulaiInstalasi;
+            $reportI->completed_installation = $request->tglSelesaiInstalasi;
+            $reportI->start_training        = $request->tglMulaiTraining;
+            $reportI->complete_training     = $request->tglSelesaiTraining;
+            $reportI->condition             = $request->kondisi;
+            $reportI->problem               = $request->problem;
+            $reportI->anydesk_id            = $request->idAnydesk;
+            $reportI->status                = '2';
+            $reportI->save();
+
+
+            if($request->tiketing == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 1
+                ]);
+            }
+            if($request->caller == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 2
+                ]);
+            }
+            if($request->digitalSignage == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 3
+                ]);
+            }
+            if($request->hardware == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->idd,
+                    'component_id'  => 4
+                ]);
+            }
+            if($request->jaringan == true){
+                Report_component::insert([
+                    'report_id'     => $reportI->id,
+                    'component_id'  => 5
+                ]);
+            }
+
+            Installation::where('id',$id)->update([
+                'status'    => 2
+            ]);
+
+            return response()->json([
+                'Report' => $reportI,
+                'message'   => 'Success'
+            ]);
+        }
+        
     }
 
     public function destroy($id)
@@ -88,16 +363,19 @@ class Report_InstallationController extends BaseController
     public function uploadVideo(Request $request, $id)
     {
         $video = $request->file('video');
+        return response()->json($request);
 
-        $mime = new \finfo(FILEINFO_MIME_TYPE);
 
-        if (strstr($mime->file($video), "video/")) {
-            $rinstallation = Report_installation::find($id);
+        if ($video) {
+            $filename = time(). '.'.$video->getClientOriginalExtension();
+            $video->move('video/', $filename);
+            $rinstallation = Report_installation::where('installation_id', $id)->first();
             if (is_null($rinstallation)) {
                 return $this->sendError('Data tidak ditemukan!');
             }
-            $rinstallation->video = $video->store('ReportVideos');
-            $rinstallation->save();
+            $upload = Report_installation::where('installation_id', $id)->update([
+                'video' => $video
+            ]);
             return $this->sendResponse(new RInstallationResource($rinstallation), 'Input data Instalasi berhasil!');
         } else {
             return $this->sendError([], 'File bukan video', 201);
@@ -107,21 +385,46 @@ class Report_InstallationController extends BaseController
     public function uploadFoto(Request $request, $id)
     {
         $photos = $request->file('photos');
+        
 
-        $mime = new \finfo(FILEINFO_MIME_TYPE);
-
-        if (strstr($mime->file($photos), "image/")) {
-            $rinstallation = Report_installation::find($id);
-            if (is_null($rinstallation)) {
-                return $this->sendError('Data tidak ditemukan!');
-            }
+        if ($photos) {
+            $filename = time(). '.'.$photos->getClientOriginalExtension();
+            $photos->move('uploads/', $filename);
             $return = Report_photo::create([
                 'report_id' => $id,
-                'photos' => $photos->store('ReportPhotos'),
+                'type'      => 'Foto',
+                'photos' => $filename
             ]);
             return $this->sendResponse($return, 'Input data Instalasi berhasil!');
         } else {
-            return $this->sendError([], 'File bukan photo', 201);
+            // return $this->sendError([$photos], 'File bukan photo', 201);
+            return response()->json([
+                'photos'    => $photos,
+                'message'   => 'File Bukan Foto!'
+            ]);
+        }
+    }
+
+    public function uploadFotoBast(Request $request, $id)
+    {
+        $photos = $request->file('photos');
+        
+
+        if ($photos) {
+            $filename = time(). '.'.$photos->getClientOriginalExtension();
+            $photos->move('uploads/', $filename);
+            $return = Report_photo::create([
+                'report_id' => $id,
+                'type'      => 'Bast',
+                'photos' => $filename
+            ]);
+            return $this->sendResponse($return, 'Input data Instalasi berhasil!');
+        } else {
+            // return $this->sendError([$photos], 'File bukan photo', 201);
+            return response()->json([
+                'photos'    => $photos,
+                'message'   => 'File Bukan Foto!'
+            ]);
         }
     }
 
